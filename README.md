@@ -8,6 +8,8 @@ tags:
 
 A FastAPI-based REST API for serving GloVe word embeddings based on Wikipedia and Gigaword dataset.
 
+[![CI/CD Pipeline](https://github.com/{username}/glove-api/actions/workflows/main.yml/badge.svg)](https://github.com/{username}/glove-api/actions/workflows/main.yml)
+
 ## Features
 
 - Get word embeddings for single words
@@ -15,6 +17,10 @@ A FastAPI-based REST API for serving GloVe word embeddings based on Wikipedia an
 - Find similar words based on embedding similarity
 - 300-dimensional word vectors
 - FastAPI-powered with automatic Swagger documentation
+- Automated CI/CD pipeline with GitHub Actions
+- Docker support
+- Code quality checks (Black, isort, Flake8)
+- Comprehensive test suite
 
 ## Prerequisites
 
@@ -54,6 +60,28 @@ A FastAPI-based REST API for serving GloVe word embeddings based on Wikipedia an
    git lfs pull
    ```
 
+## Development
+
+### Code Quality
+
+Format your code:
+```bash
+black .
+isort .
+```
+
+Run linting:
+```bash
+flake8 .
+```
+
+### Testing
+
+Run tests with coverage:
+```bash
+pytest tests/ -v --cov=app --cov-report=term-missing
+```
+
 ## Running the API
 
 ### Local Development
@@ -73,13 +101,6 @@ uvicorn app:app --host 0.0.0.0 --port 8080
 - `POST /embeddings` - Get embeddings for multiple words
 - `GET /similar/{word}` - Get similar words
 
-## Testing
-
-Run the tests using pytest:
-```bash
-pytest tests/
-```
-
 ## Deployment
 
 ### Replit Deployment
@@ -95,6 +116,23 @@ This project is configured for deployment on Replit. Simply import the repositor
    ```bash
    docker run -p 8080:8080 glove-api
    ```
+
+### CI/CD Pipeline
+
+The project includes a GitHub Actions workflow that:
+1. Runs on every push and pull request to main/master branches
+2. Checks code formatting with Black
+3. Validates imports with isort
+4. Runs linting with Flake8
+5. Executes the test suite
+6. Deploys to Replit (on main/master)
+7. Builds and pushes Docker image (on main/master)
+
+Required secrets for deployment:
+- `REPL_ID`: Your Replit project ID
+- `REPLIT_TOKEN`: Your Replit authentication token
+- `DOCKERHUB_USERNAME`: Your Docker Hub username
+- `DOCKERHUB_TOKEN`: Your Docker Hub access token
 
 ## Model Information
 
