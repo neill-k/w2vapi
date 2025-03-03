@@ -25,18 +25,32 @@ CACHE_DIR.mkdir(exist_ok=True)
 # Initialize model as None
 model = None
 
-# We'll load the model in the startup event
+# Flag to track if model is being loaded
+is_model_loading = False
+
+# We'll start loading the model in the startup event but won't block startup
 @app.on_event("startup")
-async def load_model():
-    global model
+async def startup_event():
+    global is_model_loading
+    import asyncio
+    
+    logger.info("========== STARTUP BEGIN ==========")
+    logger.info("API server starting up, port will be available immediately")
+    logger.info(f"Model will be loaded in the background")
+    
+    # Start model loading in the background
+    is_model_loading = True
+    asyncio.create_task(load_model_background())
+
+async def load_model_background():
+    """Load the model in the background without blocking API startup"""
+    global model, is_model_loading
     try:
-        logger.info("========== STARTUP BEGIN ==========")
         logger.info(f"Current directory: {os.getcwd()}")
         logger.info(f"Cache directory exists: {CACHE_DIR.exists()}")
         logger.info(f"Cache directory content: {list(CACHE_DIR.glob('*'))}")
         
-        logger.info("Loading GloVe model...")
-        logger.info("Attempting to load GloVe model...")
+        logger.info("Loading GloVe model in background...")
         model_path = CACHE_DIR / "glove-wiki-gigaword-300.model"
         logger.info(f"Model path: {model_path}")
         logger.info(f"Model path exists: {model_path.exists()}")
@@ -86,7 +100,8 @@ async def load_model():
                 logger.error(f"Current directory: {os.getcwd()}")
                 logger.error(f"All files in current directory: {os.listdir('.')}")
                 logger.error(f"All files in model_cache: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}")
-                raise RuntimeError(error_msg)
+                is_model_loading = False
+                return  # Don't raise exception, just return
         
         logger.info(f"Loading model from: {model_path}")
         model = KeyedVectors.load(str(model_path))
@@ -110,8 +125,8 @@ async def load_model():
         logger.error(f"Cache directory files: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}")
         logger.error("========== ERROR DETAILS END ==========")
         logger.error(f"Error loading model: {e!s}")
-        # Don't raise the exception - let the API start without the model
-        # We'll handle the None model in the endpoints
+    finally:
+        is_model_loading = False
 
 
 class WordInput(BaseModel):
@@ -152,9 +167,12 @@ async def health_check():
     """Check if the model is loaded properly."""
     logger.info(f"Health check requested. Model is: {'loaded' if model is not None else 'None'}")
     
-    if model is None:
-        logger.info("Health check: Model is still initializing")
-        return {"status": "initializing", "model_loaded": False, "message": "Model is still loading"}
+    if is_model_loading:
+        logger.info("Health check: Model is currently loading")
+        return {"status": "initializing", "model_loaded": False, "message": "Model is currently loading in background"}
+    elif model is None:
+        logger.info("Health check: Model failed to load or hasn't started loading yet")
+        return {"status": "warning", "model_loaded": False, "message": "Model not loaded, but API is operational"}
     
     # Quick health check - just verify model exists without testing vectors
     # This makes health checks faster for deployment
@@ -164,8 +182,10 @@ async def health_check():
 @app.post("/embedding", response_model=WordEmbedding)
 async def get_embedding(word_input: WordInput):
     """Get the embedding vector for a single word."""
+    if is_model_loading:
+        raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
     if model is None:
-        raise HTTPException(status_code=503, detail="Model is still initializing, please try again later")
+        raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
     
     try:
         vector = model[word_input.word].tolist()
@@ -179,8 +199,10 @@ async def get_embedding(word_input: WordInput):
 @app.post("/embeddings", response_model=WordEmbeddingsResponse)
 async def get_embeddings(words_input: WordsInput):
     """Get embedding vectors for multiple words."""
+    if is_model_loading:
+        raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
     if model is None:
-        raise HTTPException(status_code=503, detail="Model is still initializing, please try again later")
+        raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
     
     results = {}
     for word in words_input.words:
@@ -197,8 +219,10 @@ async def get_embeddings(words_input: WordsInput):
 @app.get("/similar/{word}", response_model=SimilarWordsResponse)
 async def get_similar_words(word: str, n: int = 10):
     """Get n most similar words for a given word."""
+    if is_model_loading:
+        raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
     if model is None:
-        raise HTTPException(status_code=503, detail="Model is still initializing, please try again later")
+        raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
     
     try:
         similar_words = model.most_similar(word, topn=n)
