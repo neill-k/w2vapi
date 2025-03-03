@@ -22,31 +22,38 @@ app = FastAPI(
 CACHE_DIR = Path("model_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
-# Load the model at startup
-try:
-    logger.info("Loading GloVe model...")
-    model_path = CACHE_DIR / "glove-wiki-gigaword-300.model"
-    
-    if not model_path.exists():
-        logger.info("Model not found in cache. Downloading from Hugging Face...")
-        # Download both model files
-        hf_hub_download(
-            repo_id="fse/glove-wiki-gigaword-300",
-            filename="glove-wiki-gigaword-300.model",
-            local_dir=CACHE_DIR
-        )
-        hf_hub_download(
-            repo_id="fse/glove-wiki-gigaword-300",
-            filename="glove-wiki-gigaword-300.model.vectors.npy",
-            local_dir=CACHE_DIR
-        )
-        logger.info("Model downloaded successfully!")
-    
-    model = KeyedVectors.load(str(model_path))
-    logger.info("Model loaded successfully!")
-except Exception as e:
-    logger.error(f"Error loading model: {e!s}")
-    raise
+# Initialize model as None
+model = None
+
+# We'll load the model in the startup event
+@app.on_event("startup")
+async def load_model():
+    global model
+    try:
+        logger.info("Loading GloVe model...")
+        model_path = CACHE_DIR / "glove-wiki-gigaword-300.model"
+        
+        if not model_path.exists():
+            logger.info("Model not found in cache. Downloading from Hugging Face...")
+            # Download both model files
+            hf_hub_download(
+                repo_id="fse/glove-wiki-gigaword-300",
+                filename="glove-wiki-gigaword-300.model",
+                local_dir=CACHE_DIR
+            )
+            hf_hub_download(
+                repo_id="fse/glove-wiki-gigaword-300",
+                filename="glove-wiki-gigaword-300.model.vectors.npy",
+                local_dir=CACHE_DIR
+            )
+            logger.info("Model downloaded successfully!")
+        
+        model = KeyedVectors.load(str(model_path))
+        logger.info("Model loaded successfully!")
+    except Exception as e:
+        logger.error(f"Error loading model: {e!s}")
+        # Don't raise the exception - let the API start without the model
+        # We'll handle the None model in the endpoints
 
 
 class WordInput(BaseModel):
@@ -85,6 +92,9 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Check if the model is loaded properly."""
+    if model is None:
+        return {"status": "initializing", "model_loaded": False, "message": "Model is still loading"}
+    
     try:
         # Try to access a common word to verify model is working
         vector = model["test"].tolist()
@@ -96,6 +106,9 @@ async def health_check():
 @app.post("/embedding", response_model=WordEmbedding)
 async def get_embedding(word_input: WordInput):
     """Get the embedding vector for a single word."""
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model is still initializing, please try again later")
+    
     try:
         vector = model[word_input.word].tolist()
         return {"embedding": vector}
@@ -108,6 +121,9 @@ async def get_embedding(word_input: WordInput):
 @app.post("/embeddings", response_model=WordEmbeddingsResponse)
 async def get_embeddings(words_input: WordsInput):
     """Get embedding vectors for multiple words."""
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model is still initializing, please try again later")
+    
     results = {}
     for word in words_input.words:
         try:
@@ -123,6 +139,9 @@ async def get_embeddings(words_input: WordsInput):
 @app.get("/similar/{word}", response_model=SimilarWordsResponse)
 async def get_similar_words(word: str, n: int = 10):
     """Get n most similar words for a given word."""
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model is still initializing, please try again later")
+    
     try:
         similar_words = model.most_similar(word, topn=n)
         return {"similar_words": [{"word": word, "similarity": float(score)} for word, score in similar_words]}
