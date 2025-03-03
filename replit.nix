@@ -1,5 +1,6 @@
 { pkgs }: {
   deps = [
+    pkgs.libxcrypt
     pkgs.python39
     pkgs.python39Packages.pip
     pkgs.python39Packages.numpy
