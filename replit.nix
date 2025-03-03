@@ -1,5 +1,7 @@
 { pkgs }: {
   deps = [
+    pkgs.xsimd
+    pkgs.pkg-config
     pkgs.libxcrypt
     pkgs.python39
     pkgs.python39Packages.pip
