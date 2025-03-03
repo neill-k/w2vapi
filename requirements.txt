@@ -12,7 +12,5 @@ pytest-asyncio==0.23.5
 pytest-cov==4.1.0
 
 # Code Quality
-black==24.2.0
+ruff==0.3.0
 isort==5.13.2
-flake8==7.0.0
-flake8-bugbear==24.2.6

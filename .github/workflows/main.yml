@@ -27,64 +27,22 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest black isort
+        pip install ruff pytest isort
         pip install -r requirements.txt
 
-    - name: Check code formatting with Black
+    - name: Check code formatting with Ruff
       run: |
-        black --check .
+        ruff format --check .
 
     - name: Check imports with isort
       run: |
         isort --check-only --diff .
 
-    - name: Lint with flake8
+    - name: Lint with Ruff
       run: |
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        ruff check .
 
     - name: Run tests
       run: |
         pytest tests/ -v
 
-  deploy-to-replit:
-    needs: test
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        lfs: true
-
-    - name: Deploy to Replit
-      uses: replit/replit-deploy@v1
-      with:
-        repl-id: ${{ secrets.REPL_ID }}
-        token: ${{ secrets.REPLIT_TOKEN }}
-
-  build-and-push-docker:
-    needs: test
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        lfs: true
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Build and push
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/glove-api:latest 
