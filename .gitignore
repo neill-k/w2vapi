@@ -31,10 +31,6 @@ ENV/
 *.swp
 *.swo
 
-# Model files (these should be downloaded separately)
-*.model
-*.npy
-
 # Logs
 *.log
 
