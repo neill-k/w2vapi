@@ -1,11 +1,7 @@
 import pytest
-from fastapi.testclient import TestClient
-from app import app
 import numpy as np
 
-client = TestClient(app)
-
-def test_root():
+def test_root(client):
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
@@ -14,7 +10,7 @@ def test_root():
     assert data["dimensions"] == 300
     assert data["status"] == "running"
 
-def test_get_embedding():
+def test_get_embedding(client):
     # Test successful case
     response = client.post("/embedding", json={"word": "hello"})
     assert response.status_code == 200
@@ -27,7 +23,7 @@ def test_get_embedding():
     response = client.post("/embedding", json={"word": "thisisnotarealword"})
     assert response.status_code == 404
 
-def test_get_embeddings():
+def test_get_embeddings(client):
     # Test successful case
     response = client.post("/embeddings", json={"words": ["hello", "world"]})
     assert response.status_code == 200
@@ -45,7 +41,7 @@ def test_get_embeddings():
     assert data["results"]["hello"]["embedding"] is not None
     assert data["results"]["thisisnotarealword"]["embedding"] is None
 
-def test_get_similar_words():
+def test_get_similar_words(client):
     # Test successful case
     response = client.get("/similar/hello")
     assert response.status_code == 200
