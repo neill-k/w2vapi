@@ -39,6 +39,21 @@ No special prerequisites required. The model will be automatically downloaded fr
    pip install -r requirements.txt
    ```
 
+
+
+## API Documentation
+
+For detailed API documentation, see [API Documentation](docs/api_documentation.md).
+
+### Quick Endpoint Reference
+
+- `GET /` - API information
+- `GET /health` - API health check
+- `POST /embedding` - Get embedding for a single word
+- `POST /embeddings` - Get embeddings for multiple words
+- `GET /similar/{word}` - Get similar words
+
+
 ## Development
 
 ### Code Quality
