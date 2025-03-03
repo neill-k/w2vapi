@@ -48,4 +48,9 @@ coverage.xml
 
 # Replit
 .replit
-.breakpoints 
+.breakpoints
+
+# Model cache
+model_cache/
+*.model
+*.model.vectors.npy 

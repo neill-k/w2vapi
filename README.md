@@ -15,7 +15,7 @@ A FastAPI-based REST API for serving GloVe word embeddings based on Wikipedia an
 - Get word embeddings for single words
 - Batch process multiple words
 - Find similar words based on embedding similarity
-- 300-dimensional word vectors
+- 300-dimensional word vectors from Hugging Face model hub
 - FastAPI-powered with automatic Swagger documentation
 - Automated CI/CD pipeline with GitHub Actions
 - Docker support
@@ -24,23 +24,7 @@ A FastAPI-based REST API for serving GloVe word embeddings based on Wikipedia an
 
 ## Prerequisites
 
-1. Install Git LFS:
-   ```bash
-   # Ubuntu/Debian
-   curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
-   sudo apt-get install git-lfs
-
-   # macOS
-   brew install git-lfs
-
-   # Windows
-   # Download and install from https://git-lfs.github.com/
-   ```
-
-2. Initialize Git LFS:
-   ```bash
-   git lfs install
-   ```
+No special prerequisites required. The model will be automatically downloaded from Hugging Face model hub on first startup.
 
 ## Installation
 
@@ -53,11 +37,6 @@ A FastAPI-based REST API for serving GloVe word embeddings based on Wikipedia an
 2. Install dependencies:
    ```bash
    pip install -r requirements.txt
-   ```
-
-3. Download model files:
-   ```bash
-   git lfs pull
    ```
 
 ## Development

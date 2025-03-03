@@ -1,8 +1,11 @@
 import logging
+import os
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from gensim.models import KeyedVectors
+from huggingface_hub import hf_hub_download
 from pydantic import BaseModel
 
 # Configure logging
@@ -15,17 +18,31 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Create cache directory for models
+CACHE_DIR = Path("model_cache")
+CACHE_DIR.mkdir(exist_ok=True)
+
 # Load the model at startup
 try:
     logger.info("Loading GloVe model...")
-    import os
-    model_path = "glove-wiki-gigaword-300.model"
+    model_path = CACHE_DIR / "glove-wiki-gigaword-300.model"
     
-    if not os.path.exists(model_path):
-        logger.error(f"Model file not found at {model_path}. Make sure to run 'git lfs pull'")
-        raise FileNotFoundError(f"Model file not found at {model_path}. Please ensure Git LFS files are properly downloaded.")
+    if not model_path.exists():
+        logger.info("Model not found in cache. Downloading from Hugging Face...")
+        # Download both model files
+        hf_hub_download(
+            repo_id="fse/glove-wiki-gigaword-300",
+            filename="glove-wiki-gigaword-300.model",
+            local_dir=CACHE_DIR
+        )
+        hf_hub_download(
+            repo_id="fse/glove-wiki-gigaword-300",
+            filename="glove-wiki-gigaword-300.model.vectors.npy",
+            local_dir=CACHE_DIR
+        )
+        logger.info("Model downloaded successfully!")
     
-    model = KeyedVectors.load(model_path)
+    model = KeyedVectors.load(str(model_path))
     logger.info("Model loaded successfully!")
 except Exception as e:
     logger.error(f"Error loading model: {e!s}")
