@@ -30,27 +30,62 @@ model = None
 async def load_model():
     global model
     try:
+        print("========== STARTUP BEGIN ==========")
+        print(f"Current directory: {os.getcwd()}")
+        print(f"Cache directory exists: {CACHE_DIR.exists()}")
+        print(f"Cache directory content: {list(CACHE_DIR.glob('*'))}")
+        
         logger.info("Loading GloVe model...")
+        print("Attempting to load GloVe model...")
         model_path = CACHE_DIR / "glove-wiki-gigaword-300.model"
+        print(f"Model path: {model_path}")
+        print(f"Model path exists: {model_path.exists()}")
         
         if not model_path.exists():
+            print("Model not found in cache. Starting download from Hugging Face...")
             logger.info("Model not found in cache. Downloading from Hugging Face...")
             # Download both model files
-            hf_hub_download(
+            print("Downloading model file...")
+            model_file = hf_hub_download(
                 repo_id="fse/glove-wiki-gigaword-300",
                 filename="glove-wiki-gigaword-300.model",
                 local_dir=CACHE_DIR
             )
-            hf_hub_download(
+            print(f"Downloaded model file to: {model_file}")
+            
+            print("Downloading vectors file...")
+            vectors_file = hf_hub_download(
                 repo_id="fse/glove-wiki-gigaword-300",
                 filename="glove-wiki-gigaword-300.model.vectors.npy",
                 local_dir=CACHE_DIR
             )
+            print(f"Downloaded vectors file to: {vectors_file}")
+            
+            print("After download, cache directory content:")
+            print(list(CACHE_DIR.glob('*')))
             logger.info("Model downloaded successfully!")
         
+        print(f"Loading model from: {model_path}")
         model = KeyedVectors.load(str(model_path))
+        print("Model loaded into memory")
+        print(f"Model type: {type(model)}")
+        print(f"Model vocabulary size: {len(model.key_to_index)}")
+        print(f"Sample words in vocabulary: {list(model.key_to_index.keys())[:5]}")
         logger.info("Model loaded successfully!")
+        print("========== STARTUP COMPLETE ==========")
     except Exception as e:
+        print(f"========== ERROR LOADING MODEL ==========")
+        print(f"Error type: {type(e)}")
+        print(f"Error message: {str(e)}")
+        print(f"Error details: {repr(e)}")
+        if model_path.exists():
+            print(f"Model file exists but loading failed")
+            print(f"Model file size: {os.path.getsize(model_path)}")
+        else:
+            print(f"Model file does not exist")
+        print(f"Current directory files: {os.listdir('.')}")
+        print(f"Cache directory files: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}")
+        print("========== ERROR DETAILS END ==========")
         logger.error(f"Error loading model: {e!s}")
         # Don't raise the exception - let the API start without the model
         # We'll handle the None model in the endpoints
@@ -92,14 +127,20 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Check if the model is loaded properly."""
+    print(f"Health check requested. Model is: {'loaded' if model is not None else 'None'}")
+    
     if model is None:
+        print("Health check: Model is still initializing")
         return {"status": "initializing", "model_loaded": False, "message": "Model is still loading"}
     
     try:
         # Try to access a common word to verify model is working
+        print("Health check: Testing model with word 'test'")
         vector = model["test"].tolist()
+        print(f"Health check: Successfully retrieved vector for 'test' (length: {len(vector)})")
         return {"status": "healthy", "model_loaded": True}
     except Exception as e:
+        print(f"Health check failed with error: {str(e)}")
         return {"status": "unhealthy", "model_loaded": False, "error": str(e)}
 
 
