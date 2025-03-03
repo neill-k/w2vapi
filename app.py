@@ -42,28 +42,11 @@ async def load_model():
         print(f"Model path exists: {model_path.exists()}")
         
         if not model_path.exists():
-            print("Model not found in cache. Starting download from Hugging Face...")
-            logger.info("Model not found in cache. Downloading from Hugging Face...")
-            # Download both model files
-            print("Downloading model file...")
-            model_file = hf_hub_download(
-                repo_id="fse/glove-wiki-gigaword-300",
-                filename="glove-wiki-gigaword-300.model",
-                local_dir=CACHE_DIR
-            )
-            print(f"Downloaded model file to: {model_file}")
-            
-            print("Downloading vectors file...")
-            vectors_file = hf_hub_download(
-                repo_id="fse/glove-wiki-gigaword-300",
-                filename="glove-wiki-gigaword-300.model.vectors.npy",
-                local_dir=CACHE_DIR
-            )
-            print(f"Downloaded vectors file to: {vectors_file}")
-            
-            print("After download, cache directory content:")
-            print(list(CACHE_DIR.glob('*')))
-            logger.info("Model downloaded successfully!")
+            error_msg = "Model files not found. The build command should have downloaded them."
+            logger.error(error_msg)
+            print(error_msg)
+            print("This likely means the build command failed or did not complete.")
+            raise RuntimeError(error_msg)
         
         print(f"Loading model from: {model_path}")
         model = KeyedVectors.load(str(model_path))
@@ -133,15 +116,9 @@ async def health_check():
         print("Health check: Model is still initializing")
         return {"status": "initializing", "model_loaded": False, "message": "Model is still loading"}
     
-    try:
-        # Try to access a common word to verify model is working
-        print("Health check: Testing model with word 'test'")
-        vector = model["test"].tolist()
-        print(f"Health check: Successfully retrieved vector for 'test' (length: {len(vector)})")
-        return {"status": "healthy", "model_loaded": True}
-    except Exception as e:
-        print(f"Health check failed with error: {str(e)}")
-        return {"status": "unhealthy", "model_loaded": False, "error": str(e)}
+    # Quick health check - just verify model exists without testing vectors
+    # This makes health checks faster for deployment
+    return {"status": "healthy", "model_loaded": True}
 
 
 @app.post("/embedding", response_model=WordEmbedding)
