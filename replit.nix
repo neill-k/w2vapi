@@ -1,8 +1,12 @@
+
 { pkgs }: {
   deps = [
-    pkgs.python39
-    pkgs.python39Packages.pip
-    pkgs.python39Packages.numpy
-    pkgs.python39Packages.gensim
+    pkgs.xsimd
+    pkgs.pkg-config
+    pkgs.libxcrypt
+    pkgs.python311
+    pkgs.python311Packages.pip
+    pkgs.python311Packages.numpy
+    pkgs.python311Packages.gensim
   ];
-} 
+}
