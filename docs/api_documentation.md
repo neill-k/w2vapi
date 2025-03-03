@@ -6,7 +6,7 @@ This documentation provides details about the endpoints available in the GloVe W
 ## Base URL
 
 ```
-https://[your-replit-domain]/
+https://w-2-vapi-neill-k.replit.app/
 ```
 
 ## Authentication
