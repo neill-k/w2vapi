@@ -41,11 +41,52 @@ async def load_model():
         logger.info(f"Model path: {model_path}")
         logger.info(f"Model path exists: {model_path.exists()}")
         
+        # First check the standard path
         if not model_path.exists():
-            error_msg = "Model files not found. The build command should have downloaded them."
-            logger.error(error_msg)
-            logger.error("This likely means the build command failed or did not complete.")
-            raise RuntimeError(error_msg)
+            # Try alternative paths
+            logger.warning("Standard model path not found, trying alternative paths")
+            
+            # Try with absolute path from current directory
+            alt_paths = [
+                Path(os.getcwd()) / "model_cache" / "glove-wiki-gigaword-300.model",
+                Path("/home/runner/workspace/model_cache/glove-wiki-gigaword-300.model"),
+                Path("./model_cache/glove-wiki-gigaword-300.model")
+            ]
+            
+            # Check if the model exists in the cache directory directly
+            cache_files = list(CACHE_DIR.glob("*")) if CACHE_DIR.exists() else []
+            logger.info(f"Files in cache directory: {cache_files}")
+            
+            # Try each alternative path
+            for alt_path in alt_paths:
+                logger.info(f"Trying alternative path: {alt_path}")
+                if alt_path.exists():
+                    logger.info(f"Found model at alternative path: {alt_path}")
+                    model_path = alt_path
+                    break
+            
+            # If still not found, try to download
+            if not model_path.exists():
+                logger.warning("Model not found in any location, attempting to download")
+                try:
+                    from download_model import download_model
+                    download_success = download_model()
+                    if download_success:
+                        logger.info("Model downloaded successfully")
+                    else:
+                        logger.error("Failed to download model")
+                except Exception as e:
+                    logger.error(f"Error downloading model: {e}")
+            
+            # Final check if model exists
+            if not model_path.exists():
+                error_msg = "Model files not found after all attempts. The build command should have downloaded them."
+                logger.error(error_msg)
+                logger.error("This likely means the build command failed or did not complete.")
+                logger.error(f"Current directory: {os.getcwd()}")
+                logger.error(f"All files in current directory: {os.listdir('.')}")
+                logger.error(f"All files in model_cache: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}")
+                raise RuntimeError(error_msg)
         
         logger.info(f"Loading model from: {model_path}")
         model = KeyedVectors.load(str(model_path))
