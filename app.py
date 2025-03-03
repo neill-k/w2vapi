@@ -18,7 +18,14 @@ app = FastAPI(
 # Load the model at startup
 try:
     logger.info("Loading GloVe model...")
-    model = KeyedVectors.load("glove-wiki-gigaword-300.model")
+    import os
+    model_path = "glove-wiki-gigaword-300.model"
+    
+    if not os.path.exists(model_path):
+        logger.error(f"Model file not found at {model_path}. Make sure to run 'git lfs pull'")
+        raise FileNotFoundError(f"Model file not found at {model_path}. Please ensure Git LFS files are properly downloaded.")
+    
+    model = KeyedVectors.load(model_path)
     logger.info("Model loaded successfully!")
 except Exception as e:
     logger.error(f"Error loading model: {e!s}")
@@ -57,6 +64,16 @@ class SimilarWordsResponse(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "GloVe Word Embeddings API", "model": "glove-wiki-gigaword-300", "dimensions": 300, "status": "running"}
+
+@app.get("/health")
+async def health_check():
+    """Check if the model is loaded properly."""
+    try:
+        # Try to access a common word to verify model is working
+        vector = model["test"].tolist()
+        return {"status": "healthy", "model_loaded": True}
+    except Exception as e:
+        return {"status": "unhealthy", "model_loaded": False, "error": str(e)}
 
 
 @app.post("/embedding", response_model=WordEmbedding)
