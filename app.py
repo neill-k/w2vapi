@@ -16,6 +16,7 @@ app = FastAPI(
     title="GloVe Word Embeddings API",
     description="API for serving GloVe word embeddings based on Wikipedia and Gigaword dataset",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Create cache directory for models
@@ -25,9 +26,12 @@ CACHE_DIR.mkdir(exist_ok=True)
 # Initialize model as None
 model = None
 
-# We'll load the model in the startup event
-@app.on_event("startup")
-async def load_model():
+# Define lifespan context manager for startup and shutdown events
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Load model
     global model
     try:
         logger.info("Loading GloVe model...")
@@ -54,6 +58,11 @@ async def load_model():
         logger.error(f"Error loading model: {e!s}")
         # Don't raise the exception - let the API start without the model
         # We'll handle the None model in the endpoints
+    
+    yield  # This is where the app runs
+    
+    # Shutdown: Clean up resources if needed
+    # No cleanup needed for this app, but this is where you'd put it
 
 
 class WordInput(BaseModel):
