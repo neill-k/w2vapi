@@ -94,6 +94,8 @@ uvicorn app:app --host 0.0.0.0 --port 8080
 - `POST /embedding` - Get embedding for a single word
 - `POST /embeddings` - Get embeddings for multiple words
 - `GET /similar/{word}` - Get similar words
+- `POST /tokenize` - Tokenize text using GPT-3/4 tokenizers
+- `GET /available-tokenizers` - Get a list of available tokenizers
 
 ## Deployment
 

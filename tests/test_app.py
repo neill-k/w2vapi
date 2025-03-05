@@ -32,6 +32,32 @@ def test_get_embedding(client):
     assert isinstance(data["embedding"], list)
     assert len(data["embedding"]) == EMBEDDING_SIZE
 
+
+def test_tokenize(client):
+    """Test the tokenize endpoint with a simple string."""
+    response = client.post("/tokenize", json={"text": "Hello, world!", "model": "gpt-3.5-turbo"})
+    assert response.status_code == HTTP_200
+    data = response.json()
+    assert "tokens" in data
+    assert "token_count" in data
+    assert "token_strings" in data
+    assert data["token_count"] > 0
+    assert len(data["tokens"]) == data["token_count"]
+    assert len(data["token_strings"]) == data["token_count"]
+
+
+def test_available_tokenizers(client):
+    """Test the available-tokenizers endpoint."""
+    response = client.get("/available-tokenizers")
+    assert response.status_code == HTTP_200
+    data = response.json()
+    assert "available_models" in data
+    assert "default_encoding" in data
+    assert len(data["available_models"]) > 0
+    assert "gpt-3.5-turbo" in data["available_models"]
+    assert "gpt-4" in data["available_models"]
+
+
     # Test word not in vocabulary
     response = client.post("/embedding", json={"word": "thisisnotarealword"})
     assert response.status_code == HTTP_404

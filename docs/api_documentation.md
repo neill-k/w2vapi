@@ -1,4 +1,3 @@
-
 # GloVe Word Embeddings API Documentation
 
 This documentation provides details about the endpoints available in the GloVe Word Embeddings API.
@@ -152,7 +151,7 @@ Find words that are semantically similar to a given word.
 
 **URL Parameters**:
 - `word`: The word to find similar words for
-  
+
 **Query Parameters**:
 - `n`: Number of similar words to return (default: 10)
 
@@ -198,6 +197,60 @@ Find words that are semantically similar to a given word.
   - **Content**: `{"detail": "Model is still initializing, please try again later"}`
 - **Code**: 500 Internal Server Error
   - **Content**: `{"detail": "Error message"}`
+
+### Tokenization
+
+Tokenize text using OpenAI's tiktoken library (GPT-3/4 tokenizers).
+
+**URL**: `/tokenize`
+
+**Method**: `POST`
+
+**Request Body**:
+```json
+{
+    "text": "Hello, world!",
+    "model": "gpt-3.5-turbo"  // Optional, defaults to gpt-3.5-turbo
+}
+```
+
+**Response**:
+```json
+{
+    "tokens": [15339, 11, 995, 0],
+    "token_count": 4,
+    "token_strings": ["Hello", ",", " world", "!"]
+}
+```
+
+### Available Tokenizers
+
+Get a list of available tokenizers from tiktoken.
+
+**URL**: `/available-tokenizers`
+
+**Method**: `GET`
+
+**Response**:
+```json
+{
+    "available_models": [
+        "gpt-4",
+        "gpt-3.5-turbo",
+        "text-davinci-003",
+        "text-davinci-002",
+        "text-davinci-001",
+        "text-curie-001",
+        "text-babbage-001",
+        "text-ada-001",
+        "davinci",
+        "curie",
+        "babbage",
+        "ada"
+    ],
+    "default_encoding": "cl100k_base"
+}
+```
 
 ## Model Information
 

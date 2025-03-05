@@ -33,11 +33,11 @@ is_model_loading = False
 async def startup_event():
     global is_model_loading
     import asyncio
-    
+
     logger.info("========== STARTUP BEGIN ==========")
     logger.info("API server starting up, port will be available immediately")
     logger.info(f"Model will be loaded in the background")
-    
+
     # Start model loading in the background
     is_model_loading = True
     asyncio.create_task(load_model_background())
@@ -49,28 +49,28 @@ async def load_model_background():
         logger.info(f"Current directory: {os.getcwd()}")
         logger.info(f"Cache directory exists: {CACHE_DIR.exists()}")
         logger.info(f"Cache directory content: {list(CACHE_DIR.glob('*'))}")
-        
+
         logger.info("Loading GloVe model in background...")
         model_path = CACHE_DIR / "glove-wiki-gigaword-300.model"
         logger.info(f"Model path: {model_path}")
         logger.info(f"Model path exists: {model_path.exists()}")
-        
+
         # First check the standard path
         if not model_path.exists():
             # Try alternative paths
             logger.warning("Standard model path not found, trying alternative paths")
-            
+
             # Try with absolute path from current directory
             alt_paths = [
                 Path(os.getcwd()) / "model_cache" / "glove-wiki-gigaword-300.model",
                 Path("/home/runner/workspace/model_cache/glove-wiki-gigaword-300.model"),
                 Path("./model_cache/glove-wiki-gigaword-300.model")
             ]
-            
+
             # Check if the model exists in the cache directory directly
             cache_files = list(CACHE_DIR.glob("*")) if CACHE_DIR.exists() else []
             logger.info(f"Files in cache directory: {cache_files}")
-            
+
             # Try each alternative path
             for alt_path in alt_paths:
                 logger.info(f"Trying alternative path: {alt_path}")
@@ -78,7 +78,7 @@ async def load_model_background():
                     logger.info(f"Found model at alternative path: {alt_path}")
                     model_path = alt_path
                     break
-            
+
             # If still not found, try to download
             if not model_path.exists():
                 logger.warning("Model not found in any location, attempting to download")
@@ -91,7 +91,7 @@ async def load_model_background():
                         logger.error("Failed to download model")
                 except Exception as e:
                     logger.error(f"Error downloading model: {e}")
-            
+
             # Final check if model exists
             if not model_path.exists():
                 error_msg = "Model files not found after all attempts. The build command should have downloaded them."
@@ -102,7 +102,7 @@ async def load_model_background():
                 logger.error(f"All files in model_cache: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}")
                 is_model_loading = False
                 return  # Don't raise exception, just return
-        
+
         logger.info(f"Loading model from: {model_path}")
         model = KeyedVectors.load(str(model_path))
         logger.info("Model loaded into memory")
@@ -157,6 +157,15 @@ class SimilarWord(BaseModel):
 class SimilarWordsResponse(BaseModel):
     similar_words: list[SimilarWord]
 
+class TokenizeInput(BaseModel):
+    text: str
+    model: str = "gpt-3.5-turbo" #default model
+
+class TokenizeResponse(BaseModel):
+    tokens: list[int]
+    token_count: int
+    token_strings: list[str]
+
 
 @app.get("/")
 async def root():
@@ -166,14 +175,14 @@ async def root():
 async def health_check():
     """Check if the model is loaded properly."""
     logger.info(f"Health check requested. Model is: {'loaded' if model is not None else 'None'}")
-    
+
     if is_model_loading:
         logger.info("Health check: Model is currently loading")
         return {"status": "initializing", "model_loaded": False, "message": "Model is currently loading in background"}
     elif model is None:
         logger.info("Health check: Model failed to load or hasn't started loading yet")
         return {"status": "warning", "model_loaded": False, "message": "Model not loaded, but API is operational"}
-    
+
     # Quick health check - just verify model exists without testing vectors
     # This makes health checks faster for deployment
     return {"status": "healthy", "model_loaded": True}
@@ -186,7 +195,7 @@ async def get_embedding(word_input: WordInput):
         raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
     if model is None:
         raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
-    
+
     try:
         vector = model[word_input.word].tolist()
         return {"embedding": vector}
@@ -203,7 +212,7 @@ async def get_embeddings(words_input: WordsInput):
         raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
     if model is None:
         raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
-    
+
     results = {}
     for word in words_input.words:
         try:
@@ -223,11 +232,75 @@ async def get_similar_words(word: str, n: int = 10):
         raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
     if model is None:
         raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
-    
+
     try:
         similar_words = model.most_similar(word, topn=n)
         return {"similar_words": [{"word": word, "similarity": float(score)} for word, score in similar_words]}
     except KeyError as err:
         raise HTTPException(status_code=404, detail=f"Word '{word}' not found in vocabulary") from err
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/tokenize", response_model=TokenizeResponse)
+async def tokenize_text(tokenize_input: TokenizeInput):
+    """Tokenize text using OpenAI's tiktoken library."""
+    try:
+        import tiktoken
+
+        # Get appropriate encoding based on model
+        encoding = tiktoken.encoding_for_model(tokenize_input.model)
+
+        # Encode the text
+        tokens = encoding.encode(tokenize_input.text)
+
+        # Decode tokens to see token strings
+        token_strings = [encoding.decode_single_token_bytes(token).decode('utf-8', errors='replace') for token in tokens]
+
+        return {
+            "tokens": tokens,
+            "token_count": len(tokens),
+            "token_strings": token_strings
+        }
+    except ModuleNotFoundError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Tiktoken module not installed. Please add tiktoken to requirements.txt and restart the server."
+        )
+    except Exception as e:
+        if "is not a supported model" in str(e):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid model name: {tokenize_input.model}. Try 'gpt-3.5-turbo', 'gpt-4', or 'text-davinci-003'"
+            )
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/available-tokenizers")
+async def get_available_tokenizers():
+    """Get a list of available tokenizers from tiktoken."""
+    try:
+        import tiktoken
+        return {
+            "available_models": [
+                "gpt-4",
+                "gpt-3.5-turbo",
+                "text-davinci-003",
+                "text-davinci-002",
+                "text-davinci-001",
+                "text-curie-001",
+                "text-babbage-001",
+                "text-ada-001",
+                "davinci",
+                "curie",
+                "babbage",
+                "ada"
+            ],
+            "default_encoding": tiktoken.get_encoding("cl100k_base").name
+        }
+    except ModuleNotFoundError:
+        raise HTTPException(
+            status_code=503, 
+            detail="Tiktoken module not installed. Please add tiktoken to requirements.txt and restart the server."
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
