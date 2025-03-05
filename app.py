@@ -240,12 +240,13 @@ async def get_embedding(word_input: WordInput):
             "Model is not loaded, please check health endpoint for status")
 
     try:
-        vector = model[word_input.word].tolist()
+        vector = model[word_input.word.lower().strip()].tolist()
         return {"embedding": vector}
     except KeyError as err:
         raise HTTPException(
             status_code=404,
-            detail=f"Word '{word_input.word}' not found in vocabulary"
+            detail=
+            f"Word '{word_input.word.lower().strip()}' not found in vocabulary"
         ) from err
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -267,13 +268,14 @@ async def get_embeddings(words_input: WordsInput):
 
     results = {}
     for word in words_input.words:
+        normalized_word = word.lower().strip()
         try:
-            vector = model[word].tolist()
-            results[word] = {"embedding": vector}
+            vector = model[normalized_word].tolist()
+            results[normalized_word] = {"embedding": vector}
         except KeyError:
-            results[word] = {"embedding": None}
+            results[normalized_word] = {"embedding": None}
         except Exception:
-            results[word] = {"embedding": None}
+            results[normalized_word] = {"embedding": None}
     return {"results": results}
 
 
@@ -316,10 +318,7 @@ async def tokenize_text(tokenize_input: TokenizeInput):
         # Get appropriate encoding based on model
         encoding = tiktoken.encoding_for_model(tokenize_input.model)
 
-        # Pre-process the input text
-        processed_text = tokenize_input.text.lower().replace(' ', '')
-        # Encode the text
-        tokens = encoding.encode(processed_text)
+        tokens = encoding.encode(tokenize_input.text)
 
         # Decode tokens to see token strings
         token_strings = [
