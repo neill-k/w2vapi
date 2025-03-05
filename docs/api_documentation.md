@@ -210,7 +210,7 @@ Tokenize text using OpenAI's tiktoken library (GPT-3/4 tokenizers).
 ```json
 {
     "text": "Hello, world!",
-    "model": "gpt-3.5-turbo"  // Optional, defaults to gpt-3.5-turbo
+    "model": "gpt-4"
 }
 ```
 

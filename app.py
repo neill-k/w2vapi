@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="GloVe Word Embeddings API",
-    description="API for serving GloVe word embeddings based on Wikipedia and Gigaword dataset",
+    description=
+    "API for serving GloVe word embeddings based on Wikipedia and Gigaword dataset",
     version="1.0.0",
 )
 
@@ -27,6 +28,7 @@ model = None
 
 # Flag to track if model is being loaded
 is_model_loading = False
+
 
 # We'll start loading the model in the startup event but won't block startup
 @app.on_event("startup")
@@ -41,6 +43,7 @@ async def startup_event():
     # Start model loading in the background
     is_model_loading = True
     asyncio.create_task(load_model_background())
+
 
 async def load_model_background():
     """Load the model in the background without blocking API startup"""
@@ -58,17 +61,22 @@ async def load_model_background():
         # First check the standard path
         if not model_path.exists():
             # Try alternative paths
-            logger.warning("Standard model path not found, trying alternative paths")
+            logger.warning(
+                "Standard model path not found, trying alternative paths")
 
             # Try with absolute path from current directory
             alt_paths = [
-                Path(os.getcwd()) / "model_cache" / "glove-wiki-gigaword-300.model",
-                Path("/home/runner/workspace/model_cache/glove-wiki-gigaword-300.model"),
+                Path(os.getcwd()) / "model_cache" /
+                "glove-wiki-gigaword-300.model",
+                Path(
+                    "/home/runner/workspace/model_cache/glove-wiki-gigaword-300.model"
+                ),
                 Path("./model_cache/glove-wiki-gigaword-300.model")
             ]
 
             # Check if the model exists in the cache directory directly
-            cache_files = list(CACHE_DIR.glob("*")) if CACHE_DIR.exists() else []
+            cache_files = list(
+                CACHE_DIR.glob("*")) if CACHE_DIR.exists() else []
             logger.info(f"Files in cache directory: {cache_files}")
 
             # Try each alternative path
@@ -81,7 +89,8 @@ async def load_model_background():
 
             # If still not found, try to download
             if not model_path.exists():
-                logger.warning("Model not found in any location, attempting to download")
+                logger.warning(
+                    "Model not found in any location, attempting to download")
                 try:
                     from download_model import download_model
                     download_success = download_model()
@@ -96,10 +105,15 @@ async def load_model_background():
             if not model_path.exists():
                 error_msg = "Model files not found after all attempts. The build command should have downloaded them."
                 logger.error(error_msg)
-                logger.error("This likely means the build command failed or did not complete.")
+                logger.error(
+                    "This likely means the build command failed or did not complete."
+                )
                 logger.error(f"Current directory: {os.getcwd()}")
-                logger.error(f"All files in current directory: {os.listdir('.')}")
-                logger.error(f"All files in model_cache: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}")
+                logger.error(
+                    f"All files in current directory: {os.listdir('.')}")
+                logger.error(
+                    f"All files in model_cache: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}"
+                )
                 is_model_loading = False
                 return  # Don't raise exception, just return
 
@@ -108,7 +122,9 @@ async def load_model_background():
         logger.info("Model loaded into memory")
         logger.info(f"Model type: {type(model)}")
         logger.info(f"Model vocabulary size: {len(model.key_to_index)}")
-        logger.info(f"Sample words in vocabulary: {list(model.key_to_index.keys())[:5]}")
+        logger.info(
+            f"Sample words in vocabulary: {list(model.key_to_index.keys())[:5]}"
+        )
         logger.info("Model loaded successfully!")
         logger.info("========== STARTUP COMPLETE ==========")
     except Exception as e:
@@ -122,7 +138,9 @@ async def load_model_background():
         else:
             logger.error(f"Model file does not exist")
         logger.error(f"Current directory files: {os.listdir('.')}")
-        logger.error(f"Cache directory files: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}")
+        logger.error(
+            f"Cache directory files: {os.listdir(CACHE_DIR) if CACHE_DIR.exists() else 'cache dir not found'}"
+        )
         logger.error("========== ERROR DETAILS END ==========")
         logger.error(f"Error loading model: {e!s}")
     finally:
@@ -157,9 +175,11 @@ class SimilarWord(BaseModel):
 class SimilarWordsResponse(BaseModel):
     similar_words: list[SimilarWord]
 
+
 class TokenizeInput(BaseModel):
     text: str
-    model: str = "gpt-3.5-turbo" #default model
+    model: str = "gpt-3.5-turbo"  #default model
+
 
 class TokenizeResponse(BaseModel):
     tokens: list[int]
@@ -169,19 +189,36 @@ class TokenizeResponse(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "GloVe Word Embeddings API", "model": "glove-wiki-gigaword-300", "dimensions": 300, "status": "running"}
+    return {
+        "message": "GloVe Word Embeddings API",
+        "model": "glove-wiki-gigaword-300",
+        "dimensions": 300,
+        "status": "running"
+    }
+
 
 @app.get("/health")
 async def health_check():
     """Check if the model is loaded properly."""
-    logger.info(f"Health check requested. Model is: {'loaded' if model is not None else 'None'}")
+    logger.info(
+        f"Health check requested. Model is: {'loaded' if model is not None else 'None'}"
+    )
 
     if is_model_loading:
         logger.info("Health check: Model is currently loading")
-        return {"status": "initializing", "model_loaded": False, "message": "Model is currently loading in background"}
+        return {
+            "status": "initializing",
+            "model_loaded": False,
+            "message": "Model is currently loading in background"
+        }
     elif model is None:
-        logger.info("Health check: Model failed to load or hasn't started loading yet")
-        return {"status": "warning", "model_loaded": False, "message": "Model not loaded, but API is operational"}
+        logger.info(
+            "Health check: Model failed to load or hasn't started loading yet")
+        return {
+            "status": "warning",
+            "model_loaded": False,
+            "message": "Model not loaded, but API is operational"
+        }
 
     # Quick health check - just verify model exists without testing vectors
     # This makes health checks faster for deployment
@@ -192,15 +229,24 @@ async def health_check():
 async def get_embedding(word_input: WordInput):
     """Get the embedding vector for a single word."""
     if is_model_loading:
-        raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
+        raise HTTPException(
+            status_code=503,
+            detail=
+            "Model is currently loading, please try again in a few moments")
     if model is None:
-        raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
+        raise HTTPException(
+            status_code=503,
+            detail=
+            "Model is not loaded, please check health endpoint for status")
 
     try:
         vector = model[word_input.word].tolist()
         return {"embedding": vector}
     except KeyError as err:
-        raise HTTPException(status_code=404, detail=f"Word '{word_input.word}' not found in vocabulary") from err
+        raise HTTPException(
+            status_code=404,
+            detail=f"Word '{word_input.word}' not found in vocabulary"
+        ) from err
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -209,9 +255,15 @@ async def get_embedding(word_input: WordInput):
 async def get_embeddings(words_input: WordsInput):
     """Get embedding vectors for multiple words."""
     if is_model_loading:
-        raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
+        raise HTTPException(
+            status_code=503,
+            detail=
+            "Model is currently loading, please try again in a few moments")
     if model is None:
-        raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
+        raise HTTPException(
+            status_code=503,
+            detail=
+            "Model is not loaded, please check health endpoint for status")
 
     results = {}
     for word in words_input.words:
@@ -229,17 +281,31 @@ async def get_embeddings(words_input: WordsInput):
 async def get_similar_words(word: str, n: int = 10):
     """Get n most similar words for a given word."""
     if is_model_loading:
-        raise HTTPException(status_code=503, detail="Model is currently loading, please try again in a few moments")
+        raise HTTPException(
+            status_code=503,
+            detail=
+            "Model is currently loading, please try again in a few moments")
     if model is None:
-        raise HTTPException(status_code=503, detail="Model is not loaded, please check health endpoint for status")
+        raise HTTPException(
+            status_code=503,
+            detail=
+            "Model is not loaded, please check health endpoint for status")
 
     try:
         similar_words = model.most_similar(word, topn=n)
-        return {"similar_words": [{"word": word, "similarity": float(score)} for word, score in similar_words]}
+        return {
+            "similar_words": [{
+                "word": word,
+                "similarity": float(score)
+            } for word, score in similar_words]
+        }
     except KeyError as err:
-        raise HTTPException(status_code=404, detail=f"Word '{word}' not found in vocabulary") from err
+        raise HTTPException(
+            status_code=404,
+            detail=f"Word '{word}' not found in vocabulary") from err
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/tokenize", response_model=TokenizeResponse)
 async def tokenize_text(tokenize_input: TokenizeInput):
@@ -250,11 +316,17 @@ async def tokenize_text(tokenize_input: TokenizeInput):
         # Get appropriate encoding based on model
         encoding = tiktoken.encoding_for_model(tokenize_input.model)
 
+        # Pre-process the input text
+        processed_text = tokenize_input.text.lower().replace(' ', '')
         # Encode the text
-        tokens = encoding.encode(tokenize_input.text)
+        tokens = encoding.encode(processed_text)
 
         # Decode tokens to see token strings
-        token_strings = [encoding.decode_single_token_bytes(token).decode('utf-8', errors='replace') for token in tokens]
+        token_strings = [
+            encoding.decode_single_token_bytes(token).decode('utf-8',
+                                                             errors='replace')
+            for token in tokens
+        ]
 
         return {
             "tokens": tokens,
@@ -263,14 +335,16 @@ async def tokenize_text(tokenize_input: TokenizeInput):
         }
     except ModuleNotFoundError:
         raise HTTPException(
-            status_code=503, 
-            detail="Tiktoken module not installed. Please add tiktoken to requirements.txt and restart the server."
+            status_code=503,
+            detail=
+            "Tiktoken module not installed. Please add tiktoken to requirements.txt and restart the server."
         )
     except Exception as e:
         if "is not a supported model" in str(e):
             raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid model name: {tokenize_input.model}. Try 'gpt-3.5-turbo', 'gpt-4', or 'text-davinci-003'"
+                status_code=400,
+                detail=
+                f"Invalid model name: {tokenize_input.model}. Try 'gpt-3.5-turbo', 'gpt-4', or 'text-davinci-003'"
             )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -282,25 +356,19 @@ async def get_available_tokenizers():
         import tiktoken
         return {
             "available_models": [
-                "gpt-4",
-                "gpt-3.5-turbo",
-                "text-davinci-003",
-                "text-davinci-002",
-                "text-davinci-001",
-                "text-curie-001",
-                "text-babbage-001",
-                "text-ada-001",
-                "davinci",
-                "curie",
-                "babbage",
-                "ada"
+                "gpt-4", "gpt-3.5-turbo", "text-davinci-003",
+                "text-davinci-002", "text-davinci-001", "text-curie-001",
+                "text-babbage-001", "text-ada-001", "davinci", "curie",
+                "babbage", "ada"
             ],
-            "default_encoding": tiktoken.get_encoding("cl100k_base").name
+            "default_encoding":
+            tiktoken.get_encoding("cl100k_base").name
         }
     except ModuleNotFoundError:
         raise HTTPException(
-            status_code=503, 
-            detail="Tiktoken module not installed. Please add tiktoken to requirements.txt and restart the server."
+            status_code=503,
+            detail=
+            "Tiktoken module not installed. Please add tiktoken to requirements.txt and restart the server."
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
